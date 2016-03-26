@@ -17,6 +17,7 @@ HANDLE g_hChildStd_OUT_Wr = NULL;
 HANDLE g_hInputFile = NULL;
 
 void CreateChildProcess(void);
+DWORD WINAPI listenAndSend(LPVOID lpParam);
 void WriteToPipe(char* buf);
 int ReadFromPipe(char* buf);
 void ErrorExit(PTSTR);
@@ -118,7 +119,20 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	// Create the child process. 
 	CreateChildProcess();
-	ZeroMemory(&recvbuf, recvbuflen);
+
+	// Create thread for sending from pipe
+	HANDLE hThread;
+	DWORD dwThreadId;
+	hThread = CreateThread(
+		NULL,                   // default security attributes
+		0,                      // use default stack size  
+		listenAndSend,			// thread function name
+		&ClientSocket,			// argument to thread function 
+		0,                      // use default creation flags 
+		&dwThreadId);
+	// -------------
+
+	/*ZeroMemory(&recvbuf, recvbuflen);
 	DWORD headBufLen = ReadFromPipe(recvbuf);
 	iSendResult = send(ClientSocket, recvbuf, headBufLen, 0);
 	if (iSendResult == SOCKET_ERROR) {
@@ -126,28 +140,29 @@ int _tmain(int argc, _TCHAR* argv[])
 		closesocket(ClientSocket);
 		WSACleanup();
 		return 1;
-	}
+	}*/
 	//printf("Bytes sent: %d\n", iSendResult);
+
 
 	// Receive until the peer shuts down the connection
 	do {
 		ZeroMemory(&recvbuf, recvbuflen);
-		ZeroMemory(&sendbuf, sendbuflen);
+		//ZeroMemory(&sendbuf, sendbuflen);
 		iResult = recv(ClientSocket, recvbuf, recvbuflen, 0);
 		if (iResult > 0) {
 			//printf("%s\n", recvbuf);
 			//printf("Bytes received: %d\n", iResult);
 			WriteToPipe(recvbuf);
 
-			int bufSize = ReadFromPipe(sendbuf);
-			//printf("%s\n", sendbuf);
-			iSendResult = send(ClientSocket, sendbuf, bufSize, 0);
-			if (iSendResult == SOCKET_ERROR) {
-				printf("send failed with error: %d\n", WSAGetLastError());
-				closesocket(ClientSocket);
-				WSACleanup();
-				return 1;
-			}
+			//int bufSize = ReadFromPipe(sendbuf);
+			////printf("%s\n", sendbuf);
+			//iSendResult = send(ClientSocket, sendbuf, bufSize, 0);
+			//if (iSendResult == SOCKET_ERROR) {
+			//	printf("send failed with error: %d\n", WSAGetLastError());
+			//	closesocket(ClientSocket);
+			//	WSACleanup();
+			//	return 1;
+			//}
 			//printf("Bytes sent: %d\n", iSendResult);
 		}
 		else if (iResult == 0)
@@ -174,6 +189,27 @@ int _tmain(int argc, _TCHAR* argv[])
 	WSACleanup();
 
 	return 0;
+}
+
+DWORD WINAPI listenAndSend(LPVOID lpParam)
+{
+	SOCKET* ClientSocket = (SOCKET*)lpParam;
+
+	char recvbuf[DEFAULT_BUFLEN];
+	int recvbuflen = DEFAULT_BUFLEN;
+	int bufSize = 0;
+	int iSendResult;
+	for (;;) {
+		ZeroMemory(&recvbuf, recvbuflen);
+		bufSize = ReadFromPipe(recvbuf);
+		iSendResult = send(*ClientSocket, recvbuf, bufSize, 0);
+		if (iSendResult == SOCKET_ERROR) {
+			printf("send failed with error: %d\n", WSAGetLastError());
+			closesocket(*ClientSocket);
+			WSACleanup();
+			return 1;
+		}
+	}
 }
 
 void CreateChildProcess()
@@ -238,24 +274,7 @@ int ReadFromPipe(char* buf)
 
 	BOOL bSuccess = FALSE;
 	HANDLE hParentStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	DWORD totalBytesAvail = 0;
-	DWORD newTotalBytesAvail = 0;
-	for (;;)
-	{
-		for (;;) {
-			Sleep(100);
-			PeekNamedPipe(g_hChildStd_OUT_Rd, NULL, 0, NULL, &newTotalBytesAvail, NULL);
-			if (newTotalBytesAvail == totalBytesAvail) {
-				break;
-			}
-			else {
-				totalBytesAvail = newTotalBytesAvail;
-			}
-		}
-		ReadFile(g_hChildStd_OUT_Rd, buf, BUFSIZE, &dwRead, NULL);
-		break;
-	}
-
+	ReadFile(g_hChildStd_OUT_Rd, buf, BUFSIZE, &dwRead, NULL);
 	return dwRead;
 }
 

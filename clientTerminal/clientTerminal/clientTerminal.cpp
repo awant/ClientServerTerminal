@@ -13,6 +13,8 @@
 
 #define EXIT_WORD "exit\n"
 
+DWORD WINAPI listenAndPrint(LPVOID lpParam);
+
 
 int _tmain(int argc, _TCHAR* argv[])
 {
@@ -96,6 +98,19 @@ int _tmain(int argc, _TCHAR* argv[])
 	else
 		printf("recv failed with error: %d\n", WSAGetLastError());
 
+	// Create thread for listen socket
+	HANDLE hThread;
+	DWORD dwThreadId;
+	hThread = CreateThread(
+		NULL,                   // default security attributes
+		0,                      // use default stack size  
+		listenAndPrint,			// thread function name
+		&ConnectSocket,			// argument to thread function 
+		0,                      // use default creation flags 
+		&dwThreadId);
+	// -------------------------------
+
+
 	for (;;) {
 		ZeroMemory(&chBuf, BUFSIZE);
 		bSuccess = ReadFile(hStdin, chBuf, BUFSIZE, &dwRead, NULL);
@@ -115,16 +130,16 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		//printf("Bytes Sent: %ld\n", iResult);
 		//do {
-		ZeroMemory(recvbuf, DEFAULT_BUFLEN);
-			iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
-			if (iResult > 0) {
-				//printf("Bytes received: %d\n", iResult);
-				printf("%s", recvbuf);
-			}
-			else if (iResult == 0)
-				printf("Connection closed\n");
-			else
-				printf("recv failed with error: %d\n", WSAGetLastError());
+		//ZeroMemory(recvbuf, DEFAULT_BUFLEN);
+		//	iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
+		//	if (iResult > 0) {
+		//		//printf("Bytes received: %d\n", iResult);
+		//		printf("%s", recvbuf);
+		//	}
+		//	else if (iResult == 0)
+		//		printf("Connection closed\n");
+		//	else
+		//		printf("recv failed with error: %d\n", WSAGetLastError());
 
 		//} while (iResult > 0);
 	}
@@ -147,3 +162,24 @@ int _tmain(int argc, _TCHAR* argv[])
 	return 0;
 }
 
+DWORD WINAPI listenAndPrint(LPVOID lpParam)
+{
+	SOCKET* ConnectSocket = (SOCKET*)lpParam;
+
+	char recvbuf[DEFAULT_BUFLEN];
+	int recvbuflen = DEFAULT_BUFLEN;
+	int bufSize = 0;
+	int iResult;
+	for (;;) {
+		ZeroMemory(recvbuf, DEFAULT_BUFLEN);
+		iResult = recv(*ConnectSocket, recvbuf, recvbuflen, 0);
+		if (iResult > 0) {
+			//printf("Bytes received: %d\n", iResult);
+			printf("%s", recvbuf);
+		}
+		else if (iResult == 0)
+			printf("Connection closed\n");
+		else
+			printf("recv failed with error: %d\n", WSAGetLastError());
+	}
+}

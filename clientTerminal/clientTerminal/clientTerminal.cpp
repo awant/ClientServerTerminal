@@ -11,10 +11,10 @@
 #define DEFAULT_BUFLEN 4096
 #define DEFAULT_PORT "27015"
 
-#define EXIT_WORD "exit\n"
+#define EXIT_WORD "exit"
 
+// Thread function
 DWORD WINAPI listenAndPrint(LPVOID lpParam);
-
 
 int _tmain(int argc, _TCHAR* argv[])
 {
@@ -23,12 +23,12 @@ int _tmain(int argc, _TCHAR* argv[])
 	struct addrinfo *result = NULL,
 					*ptr = NULL,
 					hints;
-	char *sendbuf = "this is a test";
+
 	char recvbuf[DEFAULT_BUFLEN];
+	int recvbuflen = DEFAULT_BUFLEN;
 	ZeroMemory(recvbuf, DEFAULT_BUFLEN);
 
 	int iResult;
-	int recvbuflen = DEFAULT_BUFLEN;
 
 	// Initialize Winsock
 	iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -43,7 +43,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	hints.ai_protocol = IPPROTO_TCP;
 
 	// Resolve the server address and port
-	iResult = getaddrinfo("127.0.0.1", DEFAULT_PORT, &hints, &result);  //localhost ip address 127.0.0.1
+	// localhost ip address 127.0.0.1
+	iResult = getaddrinfo("127.0.0.1", DEFAULT_PORT, &hints, &result);
 	if (iResult != 0) {
 		printf("getaddrinfo failed with error: %d\n", iResult);
 		WSACleanup();
@@ -80,7 +81,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		return 1;
 	}
 
-	// Redirect input
 	HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
 	if (hStdin == INVALID_HANDLE_VALUE) return 1;
 	CHAR chBuf[BUFSIZE];
@@ -88,9 +88,9 @@ int _tmain(int argc, _TCHAR* argv[])
 	DWORD dwRead;
 	BOOL bSuccess;
 
+	// Should receive init cmd.exe output from server
 	iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
 	if (iResult > 0) {
-		//printf("Bytes received: %d\n", iResult);
 		printf("%s", recvbuf);
 	}
 	else if (iResult == 0)
@@ -108,15 +108,12 @@ int _tmain(int argc, _TCHAR* argv[])
 		&ConnectSocket,			// argument to thread function 
 		0,                      // use default creation flags 
 		&dwThreadId);
-	// -------------------------------
-
 
 	for (;;) {
 		ZeroMemory(&chBuf, BUFSIZE);
 		bSuccess = ReadFile(hStdin, chBuf, BUFSIZE, &dwRead, NULL);
-		chBuf[strlen(chBuf) - 2] = chBuf[strlen(chBuf) - 1];
-		chBuf[strlen(chBuf) - 1] = 0;
-		if (strcmp(chBuf, EXIT_WORD) == 0) {
+		printf("|%s|\n", chBuf);
+		if (strncmp(chBuf, EXIT_WORD, 4) == 0) {
 			printf("goodbye...\n");
 			break;
 		}
@@ -128,20 +125,14 @@ int _tmain(int argc, _TCHAR* argv[])
 			WSACleanup();
 			return 1;
 		}
-		//printf("Bytes Sent: %ld\n", iResult);
-		//do {
-		//ZeroMemory(recvbuf, DEFAULT_BUFLEN);
-		//	iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
-		//	if (iResult > 0) {
-		//		//printf("Bytes received: %d\n", iResult);
-		//		printf("%s", recvbuf);
-		//	}
-		//	else if (iResult == 0)
-		//		printf("Connection closed\n");
-		//	else
-		//		printf("recv failed with error: %d\n", WSAGetLastError());
+	}
 
-		//} while (iResult > 0);
+	// Kill thread
+	DWORD exitCode;
+	if (GetExitCodeThread(hThread, &exitCode) != 0) {
+		if (TerminateThread(hThread, exitCode) != 0) {
+			printf("close\n");
+		}
 	}
 
 	// shutdown the connection since no more data will be sent
@@ -152,8 +143,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		WSACleanup();
 		return 1;
 	}
-
-	// Receive until the peer closes the connection
 
 	// cleanup
 	closesocket(ConnectSocket);
@@ -174,12 +163,14 @@ DWORD WINAPI listenAndPrint(LPVOID lpParam)
 		ZeroMemory(recvbuf, DEFAULT_BUFLEN);
 		iResult = recv(*ConnectSocket, recvbuf, recvbuflen, 0);
 		if (iResult > 0) {
-			//printf("Bytes received: %d\n", iResult);
 			printf("%s", recvbuf);
 		}
 		else if (iResult == 0)
 			printf("Connection closed\n");
-		else
+		else {
 			printf("recv failed with error: %d\n", WSAGetLastError());
+			break;
+		}
 	}
+	return 0;
 }

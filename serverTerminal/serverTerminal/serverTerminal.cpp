@@ -2,7 +2,6 @@
 //
 
 #include "stdafx.h"
-
 #pragma comment (lib, "Ws2_32.lib")
 
 #define BUFSIZE 5000
@@ -13,7 +12,6 @@ HANDLE g_hChildStd_IN_Rd = NULL;
 HANDLE g_hChildStd_IN_Wr = NULL;
 HANDLE g_hChildStd_OUT_Rd = NULL;
 HANDLE g_hChildStd_OUT_Wr = NULL;
-
 HANDLE g_hInputFile = NULL;
 
 void CreateChildProcess(void);
@@ -36,9 +34,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	int iSendResult;
 	char recvbuf[DEFAULT_BUFLEN];
 	int recvbuflen = DEFAULT_BUFLEN;
-
-	char sendbuf[DEFAULT_BUFLEN];
-	int sendbuflen = DEFAULT_BUFLEN;
 
 	// Initialize Winsock
 	iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -130,40 +125,13 @@ int _tmain(int argc, _TCHAR* argv[])
 		&ClientSocket,			// argument to thread function 
 		0,                      // use default creation flags 
 		&dwThreadId);
-	// -------------
-
-	/*ZeroMemory(&recvbuf, recvbuflen);
-	DWORD headBufLen = ReadFromPipe(recvbuf);
-	iSendResult = send(ClientSocket, recvbuf, headBufLen, 0);
-	if (iSendResult == SOCKET_ERROR) {
-		printf("send failed with error: %d\n", WSAGetLastError());
-		closesocket(ClientSocket);
-		WSACleanup();
-		return 1;
-	}*/
-	//printf("Bytes sent: %d\n", iSendResult);
-
 
 	// Receive until the peer shuts down the connection
 	do {
 		ZeroMemory(&recvbuf, recvbuflen);
-		//ZeroMemory(&sendbuf, sendbuflen);
 		iResult = recv(ClientSocket, recvbuf, recvbuflen, 0);
 		if (iResult > 0) {
-			//printf("%s\n", recvbuf);
-			//printf("Bytes received: %d\n", iResult);
 			WriteToPipe(recvbuf);
-
-			//int bufSize = ReadFromPipe(sendbuf);
-			////printf("%s\n", sendbuf);
-			//iSendResult = send(ClientSocket, sendbuf, bufSize, 0);
-			//if (iSendResult == SOCKET_ERROR) {
-			//	printf("send failed with error: %d\n", WSAGetLastError());
-			//	closesocket(ClientSocket);
-			//	WSACleanup();
-			//	return 1;
-			//}
-			//printf("Bytes sent: %d\n", iSendResult);
 		}
 		else if (iResult == 0)
 			printf("Connection closing...\n");
@@ -175,6 +143,15 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 
 	} while (iResult > 0);
+
+	// Terminate thread
+	DWORD exitCode;
+	if (GetExitCodeThread(hThread, &exitCode) != 0) {
+		if (TerminateThread(hThread, exitCode) != 0) {
+			printf("close\n");
+		}
+	}
+
 	// shutdown the connection since we're done
 	iResult = shutdown(ClientSocket, SD_SEND);
 	if (iResult == SOCKET_ERROR) {
@@ -187,7 +164,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	// cleanup
 	closesocket(ClientSocket);
 	WSACleanup();
-
 	return 0;
 }
 
@@ -221,7 +197,6 @@ void CreateChildProcess()
 	BOOL bSuccess = FALSE;
 
 	// Set up members of the PROCESS_INFORMATION structure. 
-
 	ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
 
 	// Set up members of the STARTUPINFO structure. 
@@ -262,7 +237,6 @@ void WriteToPipe(char* buf)
 	DWORD dwRead, dwWritten;
 	BOOL bSuccess = FALSE;
 	dwRead = strlen(buf);
-
 	bSuccess = WriteFile(g_hChildStd_IN_Wr, buf, dwRead, &dwWritten, NULL);
 }
 

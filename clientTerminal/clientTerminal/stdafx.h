@@ -10,12 +10,7 @@
 
 #include <stdio.h>
 #include <tchar.h>
-
 #include <stdlib.h>
 #include <windows.h>
-//#include <winsock2.h>
 #include <ws2tcpip.h>
 #include <strsafe.h>
-
-
-// TODO: reference additional headers your program requires here

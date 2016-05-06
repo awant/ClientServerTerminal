@@ -24,6 +24,7 @@ int _tmain(int argc, _TCHAR* argv[])
 {
 	WSADATA wsaData;
 	int iResult;
+	BOOL isFirstConnect = true;
 
 	SOCKET ListenSocket = INVALID_SOCKET;
 	SOCKET ClientSocket = INVALID_SOCKET;
@@ -77,6 +78,8 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	freeaddrinfo(result);
 
+	// Limitless listen socket - if we close connection, then we can receive another client
+
 	iResult = listen(ListenSocket, SOMAXCONN);
 	if (iResult == SOCKET_ERROR) {
 		printf("listen failed with error: %d\n", WSAGetLastError());
@@ -100,6 +103,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
 	saAttr.bInheritHandle = TRUE;
 	saAttr.lpSecurityDescriptor = NULL;
+
 	if (!CreatePipe(&g_hChildStd_OUT_Rd, &g_hChildStd_OUT_Wr, &saAttr, 0))
 		ErrorExit(TEXT("StdoutRd CreatePipe"));
 	// Ensure the read handle to the pipe for STDOUT is not inherited.
@@ -144,11 +148,21 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	} while (iResult > 0);
 
+	if ((CloseHandle(g_hChildStd_OUT_Wr) == 0) ||
+		(CloseHandle(g_hChildStd_IN_Wr) == 0) ||
+		(CloseHandle(g_hChildStd_IN_Rd) == 0) ||
+		(CloseHandle(g_hChildStd_OUT_Rd) == 0)) {
+		printf("can't close pipes\n");
+		return 1;
+	}
+
+	closesocket(ListenSocket);
+
 	// Terminate thread
 	DWORD exitCode;
 	if (GetExitCodeThread(hThread, &exitCode) != 0) {
 		if (TerminateThread(hThread, exitCode) != 0) {
-			printf("close\n");
+			printf("close thread\n");
 		}
 	}
 
@@ -166,6 +180,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	WSACleanup();
 	return 0;
 }
+
+
 
 DWORD WINAPI listenAndSend(LPVOID lpParam)
 {

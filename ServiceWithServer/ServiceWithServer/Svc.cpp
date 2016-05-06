@@ -197,15 +197,15 @@ VOID SvcInit(DWORD dwArgc, LPTSTR *lpszArgv)
 
 	// TO_DO: Perform work until service stops.
 	server();
-	while (1)
-	{
-		// Check whether to stop the service.
+	//while (1)
+	//{
+	//	// Check whether to stop the service.
 
-		WaitForSingleObject(ghSvcStopEvent, INFINITE);
+	//	WaitForSingleObject(ghSvcStopEvent, INFINITE);
 
-		ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0);
-		return;
-	}
+	//	ReportSvcStatus(SERVICE_STOPPED, NO_ERROR, 0);
+	//	return;
+	//}
 }
 
 //

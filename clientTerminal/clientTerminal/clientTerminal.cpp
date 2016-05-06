@@ -112,7 +112,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	for (;;) {
 		ZeroMemory(&chBuf, BUFSIZE);
 		bSuccess = ReadFile(hStdin, chBuf, BUFSIZE, &dwRead, NULL);
-		printf("|%s|\n", chBuf);
 		if (strncmp(chBuf, EXIT_WORD, 4) == 0) {
 			printf("goodbye...\n");
 			break;
@@ -126,7 +125,6 @@ int _tmain(int argc, _TCHAR* argv[])
 			return 1;
 		}
 	}
-
 	// Kill thread
 	DWORD exitCode;
 	if (GetExitCodeThread(hThread, &exitCode) != 0) {
@@ -146,6 +144,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	// cleanup
 	closesocket(ConnectSocket);
+	printf("socket closed\n");
 	WSACleanup();
 
 	return 0;
